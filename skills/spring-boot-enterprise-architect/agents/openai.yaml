@@ -1,0 +1,4 @@
+interface:
+  display_name: "Spring Boot Enterprise Architect"
+  short_description: "Architect enterprise Spring Boot backends"
+  default_prompt: "Use $spring-boot-enterprise-architect to review or design this Spring Boot backend."
