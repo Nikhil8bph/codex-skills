@@ -50,6 +50,95 @@ Read them as needed, but never create, edit, delete, rename, reformat, regenerat
 - Keep methods small and intention-revealing, validate at boundaries, avoid magic values/dead code/catch-all exception handling, and make transactions, authorization, idempotency, and failure behavior explicit.
 - Refactor duplication only within the current task boundary and keep reusable code domain-neutral when it is placed in a shared package. Add focused tests for the reused or extended behavior.
 
+## Multi-module build structure
+
+Use Maven exclusively for Spring Boot builds in this project. Do not create or recommend Gradle build files, Gradle wrappers, or Gradle commands. If an approved upstream artifact requires Gradle, report the conflict and route it back to the appropriate architecture stage instead of silently introducing Gradle or converting the build.
+
+When the approved architecture uses microservices, create one Maven root build that aggregates every backend module and is the single authority for build-wide coordinates and versions. Use a root aggregator/parent `pom.xml` with `packaging` set to `pom` and keep the Maven Wrapper at the backend root. The root build must own:
+
+- the Java release, organization `groupId`, artifact naming, and project version convention;
+- Spring Boot, Spring Cloud, and other approved BOM/dependency versions;
+- plugin versions and shared compiler, test, coverage, formatting, and static-analysis configuration;
+- the declared module hierarchy and repositories approved by the architecture.
+
+Do not put service controllers, entities, repositories, or business logic in the root project. Put each independently deployable microservice in one clearly named leaf module, optionally grouped beneath a domain or `services` aggregator. Add service-internal submodules only when the approved architecture or current task requires a real boundary; do not split a small service speculatively.
+
+```text
+backend/
+├── pom.xml                              # root aggregator/parent; no service code
+├── shared/                              # only approved cross-service modules
+│   ├── pom.xml                          # optional aggregator
+│   └── <shared-module>/
+│       └── pom.xml
+└── services/
+    ├── pom.xml                          # optional service aggregator
+    ├── <bounded-context>-service/
+    │   ├── pom.xml
+    │   └── src/
+    └── <another-context>-service/
+        ├── pom.xml
+        └── src/
+```
+
+Keep dependency direction explicit. Service leaf modules may consume approved shared libraries, but they must not depend on another service's implementation module or share its entities/repositories. Cross-service interaction uses the approved REST/event contract. The root build keeps versions consistent; a leaf service owns its runtime configuration, migrations, tests, and deployable artifact.
+
+For a modular monolith, retain the same Maven root aggregator/parent and version-management principle and use domain-capability modules, but produce the deployable topology specified by the architecture rather than imitating microservice boundaries.
+
+## Java package organization
+
+Apply an explicit package structure to every Spring Boot topology; a monolith is not exempt. Choose one lowercase reverse-DNS product base package from the approved organization/product identity, for example `com.example.blog`. Use that product package as the application base for a single-module monolith. For microservices, give every deployable service a distinct bounded-context suffix such as `com.example.blog.identity`. Never use a generic root such as `com.example.app`, uppercase package segments, hyphens, or the same service package for unrelated deployables.
+
+Within a single-module monolith, each microservice leaf module, or each modular-monolith capability module, separate responsibilities consistently. Use the repository's established singular/plural convention when one exists; for a new codebase, prefer this baseline and add optional packages only when code for that responsibility actually exists:
+
+```text
+com.example.blog/                      # single-module monolith base
+├── config/                 # Spring and integration configuration
+├── security/               # filters, principals, authorization policies
+├── resources/              # HTTP resource contracts/interfaces, when used
+├── controller/             # HTTP adapters/resource implementations
+├── service/                # application workflows and transactions
+├── facade/                 # persistence/integration orchestration boundary
+├── repo/                   # Spring Data repositories and specifications
+├── entities/               # JPA persistence entities
+├── dtos/
+│   ├── request/            # inbound API models
+│   ├── response/           # outbound API models
+│   └── common/             # genuinely shared API value types, when needed
+├── mapper/                 # MapStruct and explicit boundary mapping
+├── exception/              # domain/API exceptions and handlers
+├── validation/             # custom validators
+├── events/                 # approved event publishers/consumers/models
+├── clients/                # approved outbound service/provider clients
+└── util/                   # stateless, service-local utilities only
+```
+
+For a microservice, apply the same package split beneath its service base, for example `com.example.blog.identity.controller`, `com.example.blog.identity.service`, and `com.example.blog.identity.entities`.
+
+For a modular monolith, keep every capability inside its own product-qualified package and repeat the applicable responsibility split inside that capability:
+
+```text
+com.example.blog/
+├── config/                            # application-wide configuration only
+├── security/                          # application-wide security only
+├── posts/
+│   ├── resources/
+│   ├── controller/
+│   ├── service/
+│   ├── facade/
+│   ├── repo/
+│   ├── entities/
+│   ├── dtos/request/
+│   ├── dtos/response/
+│   ├── mapper/
+│   └── exception/
+└── users/
+    └── ...                            # same applicable responsibility split
+```
+
+Do not flatten a modular monolith into global `controller`, `service`, `repo`, or `entities` packages containing unrelated capabilities. Capability packages must not access another capability's internal entity, repository, or implementation packages; they communicate through approved public interfaces/events.
+
+Do not create empty placeholder packages. Keep the Spring Boot application class at the monolith application base or microservice base so component scanning stays inside the intended application. If a single-module monolith grows several substantial bounded contexts, use coherent capability packages as shown above or the approved Maven modules; do not mix unrelated contexts in one package. Keep non-Java configuration under the matching application/module's `src/main/resources` and tests under a package-mirroring `src/test/java` tree.
+
 ## Architecture boundaries
 
 Prefer a strict dependency direction:
@@ -157,7 +246,7 @@ Do not trust a path variable such as `/users/{id}` to prove ownership. Verify th
 
 ## Modular monoliths and microservices
 
-Start with a modular monolith when domain boundaries, deployment independence, or scale requirements are not established. Use separate modules for shared kernel and domain capabilities, and avoid leaking domain internals through the shared module.
+Start with a modular monolith when domain boundaries, deployment independence, or scale requirements are not established. Use separate Maven modules for shared kernel and domain capabilities when the approved architecture calls for them, apply the package structure in **Java package organization** inside every capability, and avoid leaking domain internals through the shared module.
 
 Introduce microservice infrastructure only when justified:
 
@@ -165,6 +254,8 @@ Introduce microservice infrastructure only when justified:
 - Spring Cloud Gateway for routing, centralized JWT verification, CORS, and rate limiting.
 - Composite/BFF services for deliberate read aggregation or write orchestration; consult the user before adding one.
 - Kafka for asynchronous events and sagas when synchronous transactions cannot cross service boundaries safely.
+
+When microservices are approved, apply the root aggregator, leaf-service ownership, dependency isolation, and package rules in **Multi-module build structure** and **Java package organization**. Do not create separate unmanaged repositories/build roots with drifting framework or plugin versions unless the approved architecture explicitly requires a multi-repository model and defines centralized version governance.
 
 ## Configuration and operations
 
@@ -189,6 +280,12 @@ Introduce microservice infrastructure only when justified:
 
 ## Review checklist
 
+- Maven is the only backend build system; the root contains `pom.xml` and the Maven Wrapper, with no Gradle build files, wrappers, or commands.
+- A microservice backend has one root aggregator/parent that owns consistent dependency and plugin versions.
+- Each deployable service is an isolated leaf module; the root contains no service business code, and services do not depend on one another's implementation modules.
+- Every monolith and microservice has a valid reverse-DNS base package and consistently separated `config`, `security`, HTTP, service, facade, repository, entity, DTO, mapping, and error responsibilities as applicable.
+- A modular monolith keeps each bounded context in a capability package/module with its own applicable layer split; unrelated capabilities are not flattened into global layer packages or coupled through internal entities/repositories.
+- Java tests mirror production packages, and configuration/migrations are owned by the matching monolith application or service/capability module.
 - No resource/controller directly calls a repository.
 - No service bypasses the facade boundary where the architecture requires facades.
 - All API responses use the shared generic response envelope.

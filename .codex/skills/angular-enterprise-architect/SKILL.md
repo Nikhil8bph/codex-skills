@@ -98,6 +98,27 @@ src/
 - Keep smart/container route pages separate from reusable presentational components.
 - Do not create a global shared module that becomes a dumping ground for feature logic.
 
+## Component file boundaries
+
+Create every new component and route page as a four-file unit with colocated implementation, template, styles, and tests:
+
+```text
+<component-name>/
+├── <component-name>.component.ts
+├── <component-name>.component.html
+├── <component-name>.component.scss
+└── <component-name>.component.spec.ts
+```
+
+- Keep component metadata, signals, dependency injection, and presentation orchestration in `.component.ts`.
+- Keep markup and Angular template control flow in `.component.html`; do not use inline templates.
+- Keep component-scoped styles in `.component.scss`; do not use inline styles or place feature-specific styling in global stylesheets.
+- Keep component behavior, input/output, accessibility, and state-rendering tests in the colocated `.component.spec.ts`.
+- Colocate `.spec.ts` files for services, guards, interceptors, directives, pipes, and other executable units. Pure interfaces and type-only model files do not need empty placeholder specs.
+- Split files by responsibility instead of using oversized components. A separate HTML/SCSS file is not a substitute for extracting reusable UI or moving workflows into feature services/state.
+
+When touching an existing inline component within the current task scope, move its template and styles into the four-file layout if doing so is safe and task-relevant. Do not perform unrelated repository-wide conversion.
+
 ## Standalone and modern Angular defaults
 
 - Use standalone components, directives, and pipes for new code.
@@ -155,10 +176,10 @@ Never commit private secrets to environment files. Public browser configuration 
 Use precise CLI commands and place generated files in the intended domain directory:
 
 ```bash
-ng g c features/<feature-name>/pages/<page-name> --standalone --change-detection=OnPush
-ng g c features/<feature-name>/components/<component-name> --standalone --change-detection=OnPush
-ng g c shared/components/<component-name> --standalone --change-detection=OnPush
-ng g c layout/<component-name> --standalone --change-detection=OnPush
+ng g c features/<feature-name>/pages/<page-name> --standalone --change-detection=OnPush --style=scss --inline-template=false --inline-style=false --skip-tests=false
+ng g c features/<feature-name>/components/<component-name> --standalone --change-detection=OnPush --style=scss --inline-template=false --inline-style=false --skip-tests=false
+ng g c shared/components/<component-name> --standalone --change-detection=OnPush --style=scss --inline-template=false --inline-style=false --skip-tests=false
+ng g c layout/<component-name> --standalone --change-detection=OnPush --style=scss --inline-template=false --inline-style=false --skip-tests=false
 ng g s core/services/<service-name>/<service-name>
 ng g s features/<feature-name>/services/<service-name>
 ng g interceptor core/interceptors/auth --functional
@@ -278,6 +299,8 @@ Normalize API errors in one place so feature services do not each parse status c
 
 ## Review checklist
 
+- Every new component/page has separate `.component.ts`, `.component.html`, `.component.scss`, and `.component.spec.ts` files; inline templates/styles and skipped component tests are absent.
+- Tests for other executable Angular units are colocated as `.spec.ts` files; empty tests are not created for type-only models.
 - Feature routes are lazy-loaded and feature code is not placed in `core`.
 - New components are standalone and use `OnPush`.
 - Templates use modern control flow and stable tracking.
