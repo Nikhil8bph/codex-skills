@@ -27,7 +27,7 @@ Most AI code-gen fails because it jumps straight to code. This repo flips that:
 2.  **Architecture second** (ADRs, topology, DB, security — no endpoints yet)
 3.  **Contracts third** (OpenAPI / AsyncAPI / JSON Schema — single source of truth)
 4.  **Implementation plan fourth** (5-tier WBS + traceability matrix)
-5.  **Code last** (Spring Boot / Angular / Infra — strictly contract-driven)
+5.  **Code last** (Spring Boot or FastAPI / Angular / Infra — strictly contract-driven)
 
 Each stage is enforced by a dedicated skill. No stage can be skipped.
 
@@ -44,6 +44,7 @@ flowchart TD
     D --> E[5a. spring-boot-enterprise-architect]
     D --> F[5b. angular-enterprise-architect]
     D --> G[5c. infrastructure-agent]
+    D --> H[5d. python-fastapi-enterprise-architect]
     U --> F
 ```
 
@@ -56,16 +57,17 @@ Defined in [`AGENTS.md`](./AGENTS.md) — the single source of truth for executi
 | # | Skill | Location | Input | Output | Purpose |
 |---|-------|----------|-------|--------|---------|
 | 1 | **business-analyst** | `.codex/skills/business-analyst/` | Product idea / vision | `docs/01-business-requirements.md` | Discovery grill (6 dimensions), MoSCoW scoping, FR matrix, user stories with GWT acceptance criteria, NFRs, risk register |
-| 2 | **solution-architect-app-planning** | `.codex/skills/solution-architect-app-planning/` | BRD (01) | `docs/02-application-development-plan.md` | ADRs, system topology (Gateway+Eureka, PG/Mongo/Redis/MinIO/OpenSearch/Kafka), DB schemas, security/rate-limit, resiliency (circuit breaker/DLQ), integrations. No endpoints — those are stage 3 |
+| 2 | **solution-architect-app-planning** | `.codex/skills/solution-architect-app-planning/` | BRD (01) | `docs/02-application-development-plan.md` | ADRs, selected Spring Boot or FastAPI topology and justified data services, DB schemas, security/rate-limit, resiliency (circuit breaker/DLQ), integrations. No endpoints — those are stage 3 |
 | 3 | **solution-architect-api-contracts** | `.codex/skills/solution-architect-api-contracts/` | BRD + ADP (01+02) | `docs/03-api-contract-integration-specification.md` + `contracts/` | OpenAPI 3.1, AsyncAPI 3.0, JSON Schema, envelope standards, per-endpoint auth/rate-limit, Razorpay/FCM/APNs/MailHog contracts |
 | 4 | **implementation-architect** | `.codex/skills/implementation-architect/` | BRD + ADP + API Spec (01+02+03) | `docs/04-implementation-strategy.md` | 5-tier WBS (Phase→BLI→Task→Activity→Subtask), traceability matrix (FR→Service→Contract→Task), Definition of Done |
 | 4a | **ux-design-stitch** | `.codex/skills/ux-design-stitch/` | BRD + ADP + Contracts (read-only) | `docs/DESIGN.md` | Google Stitch MCP — one UX scope per run, screen inventory, states (loading/empty/error/offline), a11y, action→contract mapping. Status must be `Ready for Angular` before frontend work |
 | 5a | **spring-boot-enterprise-architect** | `.codex/skills/spring-boot-enterprise-architect/` | TASK-* from 04 + contracts | Backend code (Maven modules) | One `TASK-*` per run, Maven-only, reverse-DNS packages, Controller→Service→Facade→Repository, Flyway/Liquibase, JWT+RBAC, outbox pattern |
 | 5b | **angular-enterprise-architect** | `.codex/skills/angular-enterprise-architect/` | TASK-WEB-* + DESIGN.md + contracts | Frontend code (`src/app/...`) | Standalone + OnPush + signals + `inject()`, 4 files per component (`.ts/.html/.scss/.spec.ts`), lazy features, functional interceptors/guards |
-| 5c | **infrastructure-agent** | `.codex/skills/infrastructure-agent/` | All docs + contracts | Docker Compose, observability, backup/restore | Single-host Compose, health-gated startup, Kafka/Mongo/OpenSearch/SeaweedFS, OTEL/Prometheus/Grafana/Loki/Tempo. Never invents services beyond contracts |
-| — | **task-browser-verification** | `.codex/skills/task-browser-verification/` | — | — | Placeholder / stub for future browser E2E verification |
+| 5c | **infrastructure-agent** | `.codex/skills/infrastructure-agent/` | All docs + contracts | Docker Compose, observability, backup/restore | Approved deployment profiles, runtime lifecycle, health checks, data durability, and telemetry. Never invents providers or services beyond the plan/contracts |
+| 5d | **python-fastapi-enterprise-architect** | `.codex/skills/python-fastapi-enterprise-architect/` | One approved backend TASK-* + docs/contracts | Python FastAPI backend code | Typed Pydantic boundaries, async/resource lifecycles, SQLAlchemy/Alembic when selected, authorization, pytest and contract checks |
+| — | **task-browser-verification** | `.codex/skills/task-browser-verification/` | One TASK-* + approved UX/contracts + test environment | Scenario results and verification evidence | Real-browser flow, network, console, accessibility, and responsive checks with reproducible failures |
 
-> All skills treat `docs/01-*.md`, `docs/02-*.md`, `docs/03-*.md`, and `contracts/` as **read-only**. Only status rows in `docs/04-implementation-strategy.md` and `docs/DESIGN.md` may be mutated by downstream skills.
+> Downstream skills treat `docs/01-*.md`, `docs/02-*.md`, `docs/03-*.md`, and `contracts/` as **read-only**. Owning stages create/revise their own deliverables and require user confirmation before downstream use. Implementation skills update only their matching task-status row in `docs/04-implementation-strategy.md`; the UX skill owns `docs/DESIGN.md`.
 
 ---
 
@@ -82,6 +84,7 @@ codex-skills/
 │       ├── implementation-architect/
 │       ├── ux-design-stitch/
 │       ├── spring-boot-enterprise-architect/
+│       ├── python-fastapi-enterprise-architect/
 │       ├── angular-enterprise-architect/
 │       ├── infrastructure-agent/
 │       └── task-browser-verification/
@@ -127,7 +130,8 @@ Set `STITCH_API_KEY` as env var before running the `ux-design-stitch` skill.
 3. Invoke solution-architect-api-contracts → confirm contracts
 4. Invoke implementation-architect  → confirm WBS
 4a. Invoke ux-design-stitch         → get DESIGN.md = Ready for Angular
-5.  Invoke spring-boot / angular / infrastructure (one TASK-* per run, parallel allowed)
+5.  Invoke spring-boot or python-fastapi / angular / infrastructure (one TASK-* per run)
+6.  Invoke task-browser-verification for a UI task; record acceptance evidence
 ```
 
 > See each `SKILL.md` for detailed preconditions, checklists, and DoD.
@@ -136,7 +140,8 @@ Set `STITCH_API_KEY` as env var before running the `ux-design-stitch` skill.
 
 ## 📏 Key Rules (from AGENTS.md)
 
-- **Maven only** — root `pom.xml` with `packaging=pom`, wrapper at backend root. No Gradle.
+- **Spring Boot builds** — Maven only; microservices use a root aggregator `pom.xml` with `packaging=pom` and wrapper at the backend root. No Gradle.
+- **FastAPI builds** — approved Python package topology and dependency workflow; no Java tooling imposed on Python services.
 - **Package structure** — reverse-DNS base + `config/security/controller/service/facade/repo/entities/dtos/mapping/exception/validation/event/client`.
 - **Angular** — 4 files per component, no inline templates/styles, colocated specs.
 - **One TASK-* per agent run** — sibling tasks need separate runs.

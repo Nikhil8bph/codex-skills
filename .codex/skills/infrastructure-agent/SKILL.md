@@ -32,7 +32,7 @@ If the user requests implementation while the gate is open, explain that infrast
 
 ## Implementation task lifecycle
 
-Resolve the exact infrastructure task before changing files. Infrastructure work normally maps to `TASK-PLAT-*`, `TASK-GA-002`, `TASK-GA-003`, or an explicitly identified infrastructure/dev-tooling subtask in `docs/04-implementation-strategy.md`. Read its dependencies, acceptance criteria, subtasks, and relevant planning/contract references. If multiple tasks could apply, ask for the task ID rather than guessing.
+Resolve the exact infrastructure task before changing files. Infrastructure work normally maps to `TASK-PLAT-*` or an explicitly identified infrastructure/dev-tooling subtask in `docs/04-implementation-strategy.md`. Read its dependencies, acceptance criteria, subtasks, and relevant planning/contract references. If multiple tasks could apply, ask for the task ID rather than guessing.
 
 The centralized task-status table in `docs/04-implementation-strategy.md` is the status source of truth:
 
@@ -71,25 +71,19 @@ Read them as needed, but never create, edit, delete, rename, reformat, regenerat
 
 ## Platform baseline from the approved plan
 
-Use these selections only when they are confirmed by the planning documents; if the documents change, re-read them before using this list:
+Build a source-linked inventory of the selected applications (Spring Boot, FastAPI, Angular, or other approved runtimes), dependency versions, ports, ownership, volumes, ingress, migration jobs, observability, and backup requirements. Do not infer a particular product's databases, collaboration server, registry, object store, retention periods, or deployment profile.
 
-- Single-host profile: Docker Compose, one instance per application/dependency, named persistent volumes, health-gated startup, resource limits, log rotation, and an operator-provided reverse proxy/TLS boundary.
-- Applications: Angular web client, Spring Cloud Gateway, coarse Spring Boot domain services, Hocuspocus collaboration service, and asynchronous workers.
-- Platform dependencies: Eureka service discovery, PostgreSQL 18, MongoDB 8, Redis 8, Apache Kafka 4 in KRaft mode, OpenSearch 3, SeaweedFS 4 through its S3 interface, and Flyway-controlled migrations.
-- Local operator integration: MailHog for SMTP capture. Production SMTP, Google OAuth, compatible S3, and OTLP endpoints are operator-provided configuration, not hard-coded infrastructure secrets.
-- Reference observability: OpenTelemetry, Prometheus, Grafana, Loki, and Tempo. The event contract also requires JSON Schemas in Apicurio Registry; because the technology stack table does not list the registry, surface this as an architecture reconciliation item instead of adding it without authorization.
-
-Do not substitute MinIO, RabbitMQ, Elasticsearch, Kubernetes, Consul, or another provider merely because it is familiar. The plan explicitly selects SeaweedFS, Kafka, OpenSearch, and Eureka. A production orchestrator beyond the documented multi-node topology is an open decision unless a later approved artifact specifies one.
+Use only the selected providers and versions. Record conflicts between prose and machine-readable contracts for architecture reconciliation. For FastAPI, account for ASGI lifecycle, worker-count multiplied connection pools, graceful shutdown, and a separate controlled migration job when required. Do not add Java discovery or build tooling to a Python service unless explicitly approved.
 
 ## Infrastructure responsibilities
 
 The infrastructure agent owns runtime composition and operational concerns, not business behavior:
 
 - service discovery, ingress routing boundaries, internal networks, ports, TLS/mTLS material flow, certificate rotation hooks, and readiness/liveness behavior;
-- database instances, service-owned database/schema boundaries, RLS context prerequisites, controlled Flyway jobs, connection pools, backups, and restore procedures;
-- Kafka KRaft brokers, topic creation from the AsyncAPI topic matrix, partition/key policy, replication, seven-day ordinary retention, retry topics, 30-day DLQs, schema compatibility, and safe consumer startup;
+- database instances, service-owned database/schema boundaries, RLS context prerequisites, controlled migration jobs, connection pools, backups, and restore procedures;
+- Kafka KRaft brokers, topic creation from the AsyncAPI topic matrix, partition/key policy, replication, contract-defined retention, retry topics, DLQs, schema compatibility, and safe consumer startup;
 - Redis persistence/replication and TTL-aware namespaces for sessions, rate limits, locks, presence, cache, and fan-out;
-- MongoDB replica-set initialization and durable Yjs/audit/activity storage; OpenSearch as a rebuildable derived index; and SeaweedFS buckets/path policy for files, snapshots, and exports;
+- MongoDB replica-set initialization and approved document storage; OpenSearch as a rebuildable derived index; and the selected object store’s bucket/path policy;
 - OTEL collection and content-free structured logs, metrics, traces, dashboards, alerts, correlation IDs, redaction, and diagnostics;
 - operator configuration, secret injection, resource limits, image/version pinning, SBOM/license evidence, backup encryption, recovery drills, and safe upgrade/rollback procedures.
 
@@ -106,7 +100,7 @@ Do not add application endpoints, DTOs, event payloads, business migrations, aut
 - Treat Kafka as at-least-once transport, not business authority. Preserve outbox/inbox ordering, idempotency, retry, DLQ, and replay requirements from the contracts.
 - Do not make OpenSearch the authorization source. Permission checks remain authoritative in owning services even when the index is stale.
 - Keep access tokens out of storage, URLs, and logs. Redis-backed refresh sessions, rate-limit buckets, and TTLs must match the plan and describe loss/recovery behavior.
-- Avoid destructive reset commands and volume deletion. If a reset is explicitly requested, identify the exact named resources, state the data-loss impact, and obtain confirmation immediately before doing it.
+- Avoid destructive reset commands and volume deletion. For a reset, identify the exact named resources and data-loss impact; require explicit authorization for that scope, reusing authorization already supplied.
 
 ## Contract-driven checks
 

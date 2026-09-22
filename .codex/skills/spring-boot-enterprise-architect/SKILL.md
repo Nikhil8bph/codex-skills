@@ -5,15 +5,15 @@ description: Design, review, and scaffold enterprise Spring Boot backends with l
 
 # Spring Boot Enterprise Architect
 
-Use this skill for planning, reviewing, scaffolding, or implementing Spring Boot backend applications. Keep the work backend-focused and preserve the user's chosen deployment style. Do not introduce microservices, gateways, composite services, or external providers unless the user requests them or the domain boundaries clearly require them.
+Use this skill for planning, reviewing, scaffolding, or implementing Spring Boot backend applications. Keep the work backend-focused and preserve the user's chosen deployment style. Do not introduce microservices, gateways, composite services, or external providers unless the approved architecture specifies them.
 
 ## Implementation-strategy workflow
 
 Before changing backend code, read `AGENTS.md` and `docs/04-implementation-strategy.md`. Resolve the exact backend `TASK-*` task, its dependencies, acceptance criteria, subtasks, and current row in the task-status table. Use the task as the implementation scope and do not implement unrelated work.
 
-Then read the relevant sections of `docs/02-application-development-plan.md`, `docs/03-api-contract-integration-specification.md`, and the referenced files under `contracts/`. The planning documents define service boundaries, persistence ownership, security, and resilience; OpenAPI, AsyncAPI, and JSON Schema files define the approved wire contracts. Do not invent endpoints, DTOs, event payloads, persistence owners, business rules, or integrations when the task and contracts do not specify them.
+Then read the approved BRD at `docs/01-business-requirements.md` and the relevant sections of `docs/02-application-development-plan.md`, `docs/03-api-contract-integration-specification.md`, and the referenced files under `contracts/`. The planning documents define service boundaries, persistence ownership, security, and resilience; OpenAPI, AsyncAPI, and JSON Schema files define the approved wire contracts. Do not invent endpoints, DTOs, event payloads, persistence owners, business rules, or integrations when the task and contracts do not specify them.
 
-Check the implementation-strategy document status and stage gate before implementation. If `docs/04-implementation-strategy.md` is missing, its status is not approved, the task is missing, or a dependency is incomplete, stop at a non-mutating assessment/plan. Do not scaffold backend code or change task status to `In Progress` while the stage gate is open. If the request maps to multiple tasks and the correct task cannot be determined unambiguously, ask for the task ID.
+Verify approval evidence for all four planning stages and the relevant contracts before implementation; file existence alone is insufficient. Check the implementation-strategy document status and stage gate before implementation. If `docs/04-implementation-strategy.md` is missing, its status is not approved, the task is missing, or a dependency is incomplete, stop at a non-mutating assessment/plan. Do not scaffold backend code or change task status to `In Progress` while the stage gate is open. If the request maps to multiple tasks and the correct task cannot be determined unambiguously, ask for the task ID.
 
 Task lifecycle is recorded in the centralized table in `docs/04-implementation-strategy.md`:
 
@@ -157,6 +157,8 @@ For projects using a `resources` package, define resource contracts and implemen
 
 ## API contracts
 
+The following identifiers, envelopes, auth flows, roles, UUIDs, auditing, soft-delete, and session patterns are examples only where supported by the approved sources. Contract routes, payloads, status codes (including bodyless `204`), identifier types, and authentication transport take precedence. Do not invent login capabilities, token revocation rules, or role hierarchies.
+
 Use `/api/v1` versioning and document endpoints with `@Tag`, `@Operation`, and meaningful `@ApiResponse` annotations.
 
 The project shared kernel uses:
@@ -170,7 +172,7 @@ Preserve the envelope fields already defined by the project (`data`, `message`, 
 
 For paginated APIs, return `StandardResponse<PageResponse<T>>`. Include page number, page size, total records, total pages, and a list of results. Validate page size limits and reject negative page values.
 
-Never include password hashes, reset tokens, refresh tokens, or internal security metadata in response models. Use dedicated request/response models such as `CreateUserRequest`, `LoginRequest`, `UserResponse`, and `TokenResponse`.
+Never include password hashes or internal security metadata in response models. Deliver reset/refresh tokens only through the approved authentication transport; exclude them from ordinary resource DTOs and logs. Use dedicated request/response models such as `CreateUserRequest`, `LoginRequest`, `UserResponse`, and `TokenResponse`.
 
 For password login, accept one `identifier` plus `password`. The identifier may be a username, email address, or phone number. Normalize identifiers consistently before lookup, enforce uniqueness at the database level, and return the same authentication failure shape for all identifier types.
 
@@ -246,7 +248,7 @@ Do not trust a path variable such as `/users/{id}` to prove ownership. Verify th
 
 ## Modular monoliths and microservices
 
-Start with a modular monolith when domain boundaries, deployment independence, or scale requirements are not established. Use separate Maven modules for shared kernel and domain capabilities when the approved architecture calls for them, apply the package structure in **Java package organization** inside every capability, and avoid leaking domain internals through the shared module.
+Use the topology selected in the approved application plan. If topology is not established, return that decision to the architecture stage. Use separate Maven modules for shared kernel and domain capabilities when the approved architecture calls for them, apply the package structure in **Java package organization** inside every capability, and avoid leaking domain internals through the shared module.
 
 Introduce microservice infrastructure only when justified:
 
@@ -268,10 +270,10 @@ When microservices are approved, apply the root aggregator, leaf-service ownersh
 
 ## Implementation workflow
 
-1. Clarify modular monolith versus distributed services.
+1. Read the approved topology and resolve one implementation task.
 2. Identify bounded contexts and module dependencies.
-3. Define roles, precedence, ownership, and tenant rules.
-4. Define request/response contracts and standardized error handling.
+3. Map the approved roles, precedence, ownership, and tenant rules.
+4. Implement the approved request/response contracts and error handling.
 5. Model entities, constraints, audit fields, tenant fields, and repositories.
 6. Implement facades, then services, then resource/controller implementations.
 7. Add authentication, sessions, filters/specifications, and rate limiting.

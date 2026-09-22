@@ -52,9 +52,9 @@ Do not use Stitch output as permission to invent API behavior, persistence, secu
 
 ## `docs/DESIGN.md` handoff
 
-Write or update `docs/DESIGN.md` only after reviewing the Stitch result. Keep it concise, traceable, and implementation-ready. It must contain:
+Write or update `docs/DESIGN.md` only after reviewing the Stitch result. Preserve all unrelated scopes and their review evidence. A ready scope does not make draft scopes ready; Angular must check the requested scope’s status and source versions. Keep it concise, traceable, and implementation-ready. It must contain:
 
-- document status: `Draft`, `Ready for Angular`, or `Superseded`;
+- document status: `Draft`, `Ready for Angular`, or `Superseded`; maintain the same status and source-version fields for each design scope;
 - date, design scope, source document IDs/versions, and Stitch project/screen references when available;
 - product UX principles and the information architecture relevant to the scope;
 - screen inventory with purpose, entry/exit, persona/permission, route or shell location, responsive behavior, and Stitch reference;

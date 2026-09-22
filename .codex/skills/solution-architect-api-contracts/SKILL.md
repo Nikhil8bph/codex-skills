@@ -5,6 +5,20 @@ description: Acts as a Solution Architect who uses an existing Business Requirem
 
 # Solution Architect - API Contract Design
 
+## Framework-neutral contracts and validation
+
+Apply framework/provider examples below only when the approved application plan selects them. Wire contracts must work independently of Java or Python implementations; MapStruct is Java-specific, while FastAPI uses typed Pydantic boundary models and explicit mapping. Neither implementation tool dictates public field names or error shapes.
+
+Produce OpenAPI in `contracts/openapi/`, AsyncAPI in `contracts/asyncapi/` only for approved messaging, and reusable JSON Schemas in `contracts/schemas/` where needed. Use the agreed specification versions. Resolve references, validate examples against schemas, and run available specification validators; report checks that could not run. Do not create empty messaging artifacts for a REST-only application.
+
+Specify required versus nullable versus omitted fields, formats, bounds, unknown-field policy, pagination limits, operation IDs, content types, auth/scopes, headers, error schemas, and retry/idempotency semantics. A `204` response has no body. Document validation failures explicitly rather than assuming FastAPI's default `422` or Spring's default error structure matches the contract. Review breaking changes against existing consumers before requesting approval.
+
+## Artifact ownership and stage gate
+
+Read `AGENTS.md` and the user-confirmed BRD and application development plan before producing this stage's output. This stage owns `docs/03-api-contract-integration-specification.md` and relevant machine-readable files under `contracts/`; preserve existing decisions and stable IDs when revising it. Upstream artifacts are read-only. If repository instructions prohibit writing even this stage's output, report that conflict and provide a proposed draft without changing protected files.
+
+Record document status (`Draft` or `Approved`), version/date, source versions, unresolved decisions, and approval evidence. Produce a concrete, reviewable draft before requesting stage confirmation. Existing explicit user approval in the conversation is evidence; do not request it again. File existence alone does not establish approval. Do not mark your own draft approved or automatically begin the next stage. Revisions that invalidate downstream decisions must identify affected artifacts/tasks for re-review.
+
 ## Summary
 
 Acts as a Solution Architect and Technical Lead to translate an already-approved Application Development Planning Document (system architecture, topology, database schemas, security/integration strategy) into concrete, production-grade API contracts: RESTful endpoint specifications, DTOs, standardized response envelopes, event/message schemas, and integration payloads. This skill assumes architecture decisions are locked in; it does not revisit tech stack, topology, or database design choices - it consumes them.
@@ -58,7 +72,7 @@ If either document is missing or incomplete:
      - Error Response: `{ "success": false, "error": { "code": string, "message": string, "details": [...] }, "timestamp": string }`
 2. **DTO & Mapping Strategy**:
    - Maintain strict separation between database entities (already modeled in the planning document) and API DTOs (RequestDTO, ResponseDTO).
-   - Use MapStruct interfaces for type-safe, performant compile-time mapping; specify field-level mapping notes when entity and DTO shapes diverge.
+   - For approved Java implementations, use MapStruct interfaces; for Python, use explicit typed mapping; specify field-level mapping notes when entity and DTO shapes diverge.
 3. **Endpoint Documentation**: For every endpoint, specify Method, Route, Required Auth/Role, Request payload, Response payload, and applicable error codes.
 
 ### Phase 3: Event & Messaging Contract Specification
@@ -92,7 +106,7 @@ Produce an **API Contract & Integration Specification Document** using this temp
 ## Gotchas & Contract-Design Pitfalls
 
 - **Idempotency in Payments & Webhooks**: Razorpay webhooks can be delivered multiple times. Always record webhook payment IDs in Redis/PostgreSQL with unique constraints to prevent duplicate fulfillment.
-- **MapStruct Entity Cycles**: Configure MapStruct with `unmappedTargetPolicy = ReportingPolicy.IGNORE` and handle bidirectional JPA entity references to avoid infinite recursion.
+- **MapStruct Entity Cycles**: For Java, fail on unintended unmapped target fields and explicitly ignore only reviewed exclusions. Keep JPA entity cycles out of public DTOs.
 - **Contract Drift from Architecture**: Do not introduce new databases, services, or topology decisions while writing contracts - if a gap is found, send it back to the `solution-architect-app-planning` skill rather than deciding architecture ad hoc.
 - **Unversioned Breaking Changes**: Always version APIs (e.g. `/api/v1/...`) and event schemas so future contract changes do not silently break existing consumers.
 - **Inconsistent Pagination/Envelope Shapes**: Reuse the same standard/paginated/error response wrappers across all modules; do not let individual endpoints invent their own response shape.
