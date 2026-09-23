@@ -7,6 +7,12 @@ description: Expert Business Analyst (BA) workflow for conducting thorough requi
 
 Expert Business Analyst (BA) workflow for conducting thorough requirement elicitation, comprehensive client discovery grilling, scope definition, and end-to-end requirement documentation.
 
+## Artifact ownership and stage gate
+
+Read `AGENTS.md` and the user’s requirements and existing discovery decisions before producing this stage's output. This stage owns `docs/01-business-requirements.md`; preserve existing decisions and stable IDs when revising it. Upstream artifacts are read-only. If repository instructions prohibit writing even this stage's output, report that conflict and provide a proposed draft without changing protected files.
+
+Record document status (`Draft` or `Approved`), version/date, source versions, unresolved decisions, and approval evidence. Produce a concrete, reviewable draft before requesting stage confirmation. Existing explicit user approval in the conversation is evidence; do not request it again. File existence alone does not establish approval. Do not mark your own draft approved or automatically begin the next stage. Revisions that invalidate downstream decisions must identify affected artifacts/tasks for re-review.
+
 ## When to Use
 
 - A user or client shares a new product, platform, feature, or business idea.
@@ -25,7 +31,7 @@ Expert Business Analyst (BA) workflow for conducting thorough requirement elicit
 
 ### 2. The Comprehensive Discovery Grill
 
-Conduct deep, exhaustive questioning across all relevant dimensions. To avoid overwhelming the client while maintaining rigor, organize the grilling into logical, focused categories:
+Reuse answers already present in the conversation and project documents. Ask a small batch of the highest-impact unanswered questions, continue drafting independent sections, and distinguish confirmed requirements from proposed assumptions. Investigate the following dimensions only where relevant. To avoid overwhelming the client while maintaining rigor, organize the grilling into logical, focused categories:
 
 - **Business Objectives and Success Metrics:**
   - What core business problem or pain point does this solve?

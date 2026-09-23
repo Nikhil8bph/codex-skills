@@ -5,6 +5,12 @@ description: Acts as a Solution Architect who requests/requires a Business Requi
 
 # Solution Architect - Application Planning
 
+## Artifact ownership and stage gate
+
+Read `AGENTS.md` and the user-confirmed `docs/01-business-requirements.md` before producing this stage's output. This stage owns `docs/02-application-development-plan.md`; preserve existing decisions and stable IDs when revising it. Upstream artifacts are read-only. If repository instructions prohibit writing even this stage's output, report that conflict and provide a proposed draft without changing protected files.
+
+Record document status (`Draft` or `Approved`), version/date, source versions, unresolved decisions, and approval evidence. Produce a concrete, reviewable draft before requesting stage confirmation. Existing explicit user approval in the conversation is evidence; do not request it again. File existence alone does not establish approval. Do not mark your own draft approved or automatically begin the next stage. Revisions that invalidate downstream decisions must identify affected artifacts/tasks for re-review.
+
 ## Summary
 
 Acts as a Solution Architect and Technical Lead to translate a Business Requirement Document (BRD) into a robust, production-grade Application Development Planning Document: architecture topology, database schemas, security architecture, resiliency patterns, and integration strategy. This skill deliberately stops short of defining API contracts (endpoints, request/response payloads, event schemas) - that is the responsibility of the companion `solution-architect-api-contracts` skill, which consumes the output of this one.
@@ -26,6 +32,8 @@ Acts as a Solution Architect and Technical Lead to translate a Business Requirem
 
 ## Supported Tech Stack & Architectural Matrix
 
+The following technologies are options, not a mandatory deployment manifest. Select only components justified by the BRD. Record Python versus Java, supported runtime/framework versions, dependency management, source/module topology, and test/migration tooling in ADRs. A FastAPI selection does not imply adding Spring Cloud, Eureka, Hibernate, MapStruct, or Bucket4j; select compatible equivalents only when needed. Never migrate an already-approved stack implicitly.
+
 ### 1. Frontend Tier
 
 - **Framework & Language**: Angular (Standalone Components, Signals, OnPush change detection), TypeScript.
@@ -33,7 +41,8 @@ Acts as a Solution Architect and Technical Lead to translate a Business Requirem
 
 ### 2. Backend Tier
 
-- **Core Platform**: Java (LTS), Spring Boot.
+- **Core Platform**: Java (LTS) with Spring Boot, or supported Python with FastAPI and Pydantic. Select per bounded context; use a mixed stack only with an explicit rationale.
+- **Python backend**: Record the packaging/lockfile workflow, ASGI server, sync/async I/O strategy, SQLAlchemy/Alembic when relational persistence is selected, authentication provider, testing tools, and worker durability requirements. Hand implementation to `python-fastapi-enterprise-architect`.
 - **Security**: Spring Security (JWT, OAuth2 Resource Server, Hierarchical Role-Based Access Control).
 - **Data Access & Persistence**: Spring Data JPA / Hibernate (relational), Spring Data MongoDB (document store).
 - **Object Mapping**: MapStruct for clean, compile-time DTO-entity conversions (contract-level usage is finalized in the API contracts skill).
@@ -74,7 +83,7 @@ Acts as a Solution Architect and Technical Lead to translate a Business Requirem
 
 1. **Architecture Topology Selection**:
    - Determine whether a Modular Monolith or Microservices Architecture is appropriate based on team structure, domain boundaries, and scaling needs.
-   - For Microservices: Define bounded contexts, service boundaries, Spring Cloud Gateway routing, and Netflix Eureka service registry topology.
+   - For Microservices: Define bounded contexts, service boundaries, ingress, and discovery mechanisms appropriate to the selected runtime; Spring Cloud Gateway and Eureka apply only when selected.
 2. **Component Communication Matrix**:
    - Synchronous: REST over HTTPS for immediate client-server requests and internal query orchestrations (contracts defined later).
    - Asynchronous: Apache Kafka topics for event-driven workflows, asynchronous processing, and cross-service domain events (schemas defined later).
@@ -97,7 +106,7 @@ Acts as a Solution Architect and Technical Lead to translate a Business Requirem
 
 1. **Authentication & Authorization Strategy**:
    - Spring Security with Stateless JWT.
-   - Secure Gateway Filter to validate JWTs at Spring Cloud Gateway before forwarding downstream with claims headers.
+   - Define the trust boundary for gateway authentication. Services must validate tokens or accept identity only over an authenticated, restricted internal channel; strip spoofable incoming identity headers at ingress.
    - Role-Based Access Control (RBAC) with method-level authorization (`@PreAuthorize`).
 2. **Rate Limiting Strategy**:
    - Configure Bucket4j with Redis to enforce IP-based, user-based, or endpoint-based token buckets (specific per-endpoint limits are finalized alongside API contracts).
@@ -120,7 +129,7 @@ Produce an **Application Development Planning Document** using this template. Th
 ## Gotchas & Architectural Pitfalls
 
 - **Avoid Dual Writes**: Never update a database and emit a Kafka event directly in a single unmanaged transaction. Use the Transactional Outbox Pattern to guarantee at-least-once message delivery.
-- **Cache Invalidation & TTLs**: Always attach explicit TTLs to all Redis keys. Do not rely solely on manual cache evictions.
+- **Cache Invalidation & TTLs**: Define TTLs for ephemeral cache/session/rate-limit keys. For intentionally persistent Redis structures, document retention, bounded growth, ownership, and recovery instead of expiring authoritative data.
 - **OpenSearch Sync**: Do not write synchronously to OpenSearch from critical transactional API paths. Sync data asynchronously via Kafka or CDC to prevent search cluster latency from degrading core APIs.
 - **Premature Contract Design**: Do not specify concrete API endpoints, DTOs, or event schemas in this phase - defer them to the `solution-architect-api-contracts` skill so architecture decisions are stable before contracts are locked in.
 - **Do Not Skip the BRD**: Never fabricate business rules or entity lifecycles that are not present in the BRD. Ask the user rather than assuming.

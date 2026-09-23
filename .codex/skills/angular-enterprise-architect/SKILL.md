@@ -9,11 +9,11 @@ Use this skill for Angular frontend architecture, feature scaffolding, component
 
 ## Implementation-strategy workflow
 
-Before changing Angular code, read `AGENTS.md` and `docs/04-implementation-strategy.md`. Resolve the exact `TASK-WEB-*` task, its dependencies, acceptance criteria, subtasks, and current row in the task-status table. Use the task as the implementation scope.
+Before changing Angular code, read `AGENTS.md` and `docs/04-implementation-strategy.md`. Resolve the exact frontend `TASK-*` task (for example `TASK-WEB-*`), its dependencies, acceptance criteria, subtasks, and current row in the task-status table. Use the task as the implementation scope.
 
-Then read the relevant sections of `docs/02-application-development-plan.md`, `docs/03-api-contract-integration-specification.md`, and the referenced files under `contracts/`. The planning documents define architecture and security; OpenAPI, AsyncAPI, and JSON Schema files define wire contracts. Do not invent routes, DTOs, event payloads, permissions, or feature behavior when a task or contract is silent.
+Then read the approved BRD at `docs/01-business-requirements.md` and the relevant sections of `docs/02-application-development-plan.md`, `docs/03-api-contract-integration-specification.md`, and the referenced files under `contracts/`. The planning documents define architecture and security; OpenAPI, AsyncAPI, and JSON Schema files define wire contracts. Do not invent routes, DTOs, event payloads, permissions, or feature behavior when a task or contract is silent.
 
-Check the implementation-strategy document status and stage gate before implementation. If `docs/04-implementation-strategy.md` is missing, its status is not approved, the task is missing, or a dependency is incomplete, stop at a non-mutating assessment/plan. Do not scaffold code or change task status to `In Progress` while the stage gate is open. If the requested work maps to multiple tasks and the correct task cannot be determined unambiguously, ask for the task ID.
+Verify approval evidence for all four planning stages and the relevant contracts before implementation; file existence alone is insufficient. Check the implementation-strategy document status and stage gate before implementation. If `docs/04-implementation-strategy.md` is missing, its status is not approved, the task is missing, or a dependency is incomplete, stop at a non-mutating assessment/plan. Do not scaffold code or change task status to `In Progress` while the stage gate is open. If the requested work maps to multiple tasks and the correct task cannot be determined unambiguously, ask for the task ID.
 
 Task lifecycle is recorded in the centralized table in `docs/04-implementation-strategy.md`:
 
@@ -57,6 +57,8 @@ Read them as needed, but never create, edit, delete, rename, reformat, regenerat
 - Use clear names, small cohesive functions, explicit state transitions, no dead code or magic values, and tests that protect observable behavior. Refactor duplication only within the current task boundary.
 
 ## Application structure
+
+Use the repository’s approved topology and installed Angular version. The layout, routes, and flags below are illustrative; do not introduce example features absent from the contracts. Verify CLI output against the required four-file component naming convention, since generator defaults may differ by version.
 
 Prefer a standalone, domain-oriented structure:
 
@@ -215,17 +217,17 @@ A feature-toggle service can expose both synchronous checks and computed signals
 ```typescript
 @Injectable({ providedIn: 'root' })
 export class FeatureToggleService {
-  private readonly flags = signal({ ...environment.features });
+  private readonly flags = signal<Record<FeatureKey, boolean>>({ ...environment.features });
 
-  isEnabled(feature: FeatureKey | string): boolean {
+  isEnabled(feature: FeatureKey): boolean {
     return !!this.flags()[feature];
   }
 
-  isEnabledSignal(feature: FeatureKey | string) {
+  isEnabledSignal(feature: FeatureKey) {
     return computed(() => !!this.flags()[feature]);
   }
 
-  setFeature(feature: string, enabled: boolean): void {
+  setFeature(feature: FeatureKey, enabled: boolean): void {
     this.flags.update(current => ({ ...current, [feature]: enabled }));
   }
 }
@@ -244,7 +246,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const token = auth.getToken();
 
-  if (!token || req.headers.has('Authorization')) {
+  if (!token || !auth.isTrustedApiUrl(req.url) || req.headers.has('Authorization')) {
     return next(req);
   }
 
@@ -253,6 +255,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   }));
 };
 ```
+
+`isTrustedApiUrl` must resolve relative URLs against the configured application origin and compare the exact approved API origin and path boundary. Do not use string-prefix hostname checks. Exclude third-party and signed object-storage URLs; test these exclusions and SSR URL resolution when applicable. Reuse the existing URL policy helper.
 
 An error interceptor should preserve the original error for callers while translating the API error envelope into a user-facing notification. Avoid showing sensitive server details directly to users.
 
@@ -266,7 +270,7 @@ Example feature guard shape:
 
 ```typescript
 export const featureToggleGuard = (
-  feature: FeatureKey | string,
+  feature: FeatureKey,
   redirectTo = '/'
 ): CanActivateFn => {
   return () => {
